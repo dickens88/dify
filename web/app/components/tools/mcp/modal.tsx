@@ -31,6 +31,7 @@ export type DuplicateAppModalProps = {
     timeout: number
     sse_read_timeout: number
     headers?: Record<string, string>
+    proxy?: { host?: string; username?: string; password?: string }
   }) => void
   onHide: () => void
 }
@@ -60,6 +61,7 @@ const MCPModal = ({
 }: DuplicateAppModalProps) => {
   const { t } = useTranslation()
   const isCreate = !data
+  const MCP_PROVIDER_PROXY_ENABLED = (process.env.NEXT_PUBLIC_MCP_PROVIDER_PROXY_ENABLED ?? 'false') === 'true'
 
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
@@ -73,6 +75,9 @@ const MCPModal = ({
   const [headers, setHeaders] = React.useState<Record<string, string>>(
     data?.masked_headers || {},
   )
+  const [proxyHost, setProxyHost] = React.useState<string>('')
+  const [proxyUsername, setProxyUsername] = React.useState<string>('')
+  const [proxyPassword, setProxyPassword] = React.useState<string>('')
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
@@ -87,6 +92,9 @@ const MCPModal = ({
       setSseReadTimeout(data.sse_read_timeout || 300)
       setHeaders(data.masked_headers || {})
       setAppIcon(getIcon(data))
+      setProxyHost((data as any)?.proxy_host || '')
+      setProxyUsername((data as any)?.proxy_username || '')
+      setProxyPassword((data as any)?.masked_proxy_password || '')
     }
     else {
       // Reset for create mode
@@ -97,6 +105,9 @@ const MCPModal = ({
       setSseReadTimeout(300)
       setHeaders({})
       setAppIcon(DEFAULT_ICON as AppIconSelection)
+      setProxyHost('')
+      setProxyUsername('')
+      setProxyPassword('')
     }
   }, [data])
 
@@ -148,6 +159,14 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server identifier' })
       return
     }
+    // If password is still the masked value, don't send it (keep existing)
+    const maskedPwd = (data as any)?.masked_proxy_password || ''
+    // If proxyHost is empty, treat as clear request and send empty object
+    const proxyPayload = proxyHost.trim() ? {
+      host: proxyHost.trim() || undefined,
+      username: proxyUsername.trim() || undefined,
+      password: proxyPassword && proxyPassword === maskedPwd ? undefined : (proxyPassword || undefined),
+    } : {}
     await onConfirm({
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       name,
@@ -158,6 +177,7 @@ const MCPModal = ({
       timeout: timeout || 30,
       sse_read_timeout: sseReadTimeout || 300,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
+      proxy: proxyPayload,
     })
     if(isCreate)
       onHide()
@@ -272,6 +292,49 @@ const MCPModal = ({
               isMasked={!isCreate && Object.keys(headers).length > 0}
             />
           </div>
+          {MCP_PROVIDER_PROXY_ENABLED && (
+            <div>
+              <div className='mb-1 flex h-6 items-center'>
+                <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxy')}</span>
+              </div>
+              <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.proxyTip')}</div>
+              <div className='space-y-3'>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyHost')}</span>
+                  </div>
+                  <Input
+                    value={proxyHost}
+                    onChange={e => setProxyHost(e.target.value)}
+                    placeholder={t('tools.mcp.modal.proxyHostPlaceholder')}
+                  />
+                </div>
+                <div className='flex gap-3'>
+                  <div className='grow'>
+                    <div className='mb-1 flex h-6 items-center'>
+                      <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyUsername')}</span>
+                    </div>
+                    <Input
+                      value={proxyUsername}
+                      onChange={e => setProxyUsername(e.target.value)}
+                      placeholder={t('tools.mcp.modal.proxyUsernamePlaceholder')}
+                    />
+                  </div>
+                  <div className='grow'>
+                    <div className='mb-1 flex h-6 items-center'>
+                      <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyPassword')}</span>
+                    </div>
+                    <Input
+                      type='password'
+                      value={proxyPassword}
+                      onChange={e => setProxyPassword(e.target.value)}
+                      placeholder={t('tools.mcp.modal.proxyPasswordPlaceholder')}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className='flex flex-row-reverse pt-5'>
           <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>

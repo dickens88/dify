@@ -28,6 +28,7 @@ class MCPToolProviderController(ToolProviderController):
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        proxy: dict[str, str] | None = None,
     ):
         super().__init__(entity)
         self.entity: ToolProviderEntityWithPlugin = entity
@@ -37,6 +38,7 @@ class MCPToolProviderController(ToolProviderController):
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
+        self.proxy = proxy or {}
 
     @property
     def provider_type(self) -> ToolProviderType:
@@ -96,6 +98,7 @@ class MCPToolProviderController(ToolProviderController):
             headers=db_provider.decrypted_headers or {},
             timeout=db_provider.timeout,
             sse_read_timeout=db_provider.sse_read_timeout,
+            proxy=db_provider.decrypted_proxy or {},
         )
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
@@ -125,6 +128,7 @@ class MCPToolProviderController(ToolProviderController):
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
+            proxy=self.proxy,
         )
 
     def get_tools(self) -> list[MCPTool]:  # type: ignore
@@ -142,6 +146,7 @@ class MCPToolProviderController(ToolProviderController):
                 headers=self.headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
+                proxy=self.proxy,
             )
             for tool_entity in self.entity.tools
         ]

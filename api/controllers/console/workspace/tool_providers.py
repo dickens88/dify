@@ -866,6 +866,7 @@ class ToolProviderMCPApi(Resource):
             "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
         )
         parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
+        parser.add_argument("proxy", type=dict, required=False, nullable=True, location="json", default=None)
         args = parser.parse_args()
         user = current_user
         if not is_valid_url(args["server_url"]):
@@ -883,6 +884,7 @@ class ToolProviderMCPApi(Resource):
                 timeout=args["timeout"],
                 sse_read_timeout=args["sse_read_timeout"],
                 headers=args["headers"],
+                proxy=args.get("proxy"),
             )
         )
 
@@ -901,6 +903,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
         parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
         parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("proxy", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -919,6 +922,7 @@ class ToolProviderMCPApi(Resource):
             timeout=args.get("timeout"),
             sse_read_timeout=args.get("sse_read_timeout"),
             headers=args.get("headers"),
+            proxy=args.get("proxy"),
         )
         return {"result": "success"}
 
