@@ -188,17 +188,6 @@ export default function AccountPage() {
           )}
         </div>
       </div>
-      {
-        systemFeatures.enable_email_password_login && (
-          <div className='mb-8 flex justify-between gap-2'>
-            <div>
-              <div className='system-sm-semibold mb-1 text-text-secondary'>{t('common.account.password')}</div>
-              <div className='body-xs-regular mb-2 text-text-tertiary'>{t('common.account.passwordTip')}</div>
-            </div>
-            <Button onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</Button>
-          </div>
-        )
-      }
       <div className='mb-6 border-[1px] border-divider-subtle' />
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.langGeniusAccount')}</div>

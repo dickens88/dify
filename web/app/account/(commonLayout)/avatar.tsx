@@ -23,19 +23,6 @@ export default function AppSelector() {
   const { userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
 
-  const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
-
-    localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
-
-    router.push('/signin')
-  }
-
   return (
     <Menu as="div" className="relative inline-block text-left">
       {
@@ -86,16 +73,6 @@ export default function AppSelector() {
                         <div className='system-xs-regular break-all text-text-tertiary'>{userProfile.email}</div>
                       </div>
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
-                    </div>
-                  </div>
-                </MenuItem>
-                <MenuItem>
-                  <div className='p-1' onClick={() => handleLogout()}>
-                    <div
-                      className='group flex h-9 cursor-pointer items-center justify-start rounded-lg px-3 hover:bg-state-base-hover'
-                    >
-                      <LogOut01 className='mr-1 flex h-4 w-4 text-text-tertiary' />
-                      <div className='text-[14px] font-normal text-text-secondary'>{t('common.userProfile.logout')}</div>
                     </div>
                   </div>
                 </MenuItem>

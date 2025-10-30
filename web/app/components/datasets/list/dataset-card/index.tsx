@@ -193,6 +193,9 @@ const DatasetCard = ({
             >
               {dataset.name}
             </div>
+              <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+                <div className='truncate' title={dataset.username}>{dataset.username}</div>
+              </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
               {!isExternalProvider && isShowDocModeInfo && (

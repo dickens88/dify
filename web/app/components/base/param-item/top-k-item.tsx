@@ -12,10 +12,10 @@ type Props = {
 }
 
 const maxTopK = (() => {
-  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
+  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 100)
   if (configValue && !isNaN(configValue))
     return configValue
-  return 10
+  return 100
 })()
 const VALUE_LIMIT = {
   default: 2,

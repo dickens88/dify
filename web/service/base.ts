@@ -520,7 +520,8 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       return resp
     const errResp: Response = err as any
     if (errResp.status === 401) {
-      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
+      window.location.href = "https://login.huawei.com/login1/?redirect=https://sectools.cloudbu.huawei.com:9443/"
+      /*const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {
         globalThis.location.href = loginUrl
@@ -581,7 +582,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       globalThis.location.href = loginUrl
-      return Promise.reject(err)
+      return Promise.reject(err)*/
     }
     else {
       return Promise.reject(err)
