@@ -62,7 +62,6 @@ const MCPModal = ({
   const { t } = useTranslation()
   const isCreate = !data
   const MCP_PROVIDER_PROXY_ENABLED = (process.env.NEXT_PUBLIC_MCP_PROVIDER_PROXY_ENABLED ?? 'false') === 'true'
-
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
