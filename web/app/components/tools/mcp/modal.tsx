@@ -293,7 +293,7 @@ const MCPModal = ({
               isMasked={!isCreate && Object.keys(headers).length > 0}
             />
           </div>
-                {MCP_PROVIDER_PROXY_ENABLED && (
+                    {MCP_PROVIDER_PROXY_ENABLED && (
             <div>
               <div className='mb-1 flex h-6 items-center'>
                 <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxy')}</span>
@@ -309,32 +309,33 @@ const MCPModal = ({
                     onChange={e => setProxyHost(e.target.value)}
                     placeholder={t('tools.mcp.modal.proxyHostPlaceholder')}
                   />
-                  <div className='flex gap-3'>
-                    <div className='grow'>
-                      <div className='mb-1 flex h-6 items-center'>
-                        <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyUsername')}</span>
-                      </div>
-                      <Input
-                        value={proxyUsername}
-                        onChange={e => setProxyUsername(e.target.value)}
-                        placeholder={t('tools.mcp.modal.proxyUsernamePlaceholder')}
-                      />
-                      </div>
-                      <div className='grow'>
-                        <div className='mb-1 flex h-6 items-center'>
-                          <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyPassword')}</span>
-                        </div>
-                        <Input
-                          type='password'
-                          value={proxyPassword}
-                          onChange={e => setProxyPassword(e.target.value)}
-                          placeholder={t('tools.mcp.modal.proxyPasswordPlaceholder')}
-                        />
-                       </div>
-                      </div>
-                     </div>
+                  </div>
+                <div className='flex gap-3'>
+                  <div className='grow'>
+                    <div className='mb-1 flex h-6 items-center'>
+                      <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyUsername')}</span>
                     </div>
-            )}
+                    <Input
+                      value={proxyUsername}
+                      onChange={e => setProxyUsername(e.target.value)}
+                      placeholder={t('tools.mcp.modal.proxyUsernamePlaceholder')}
+                    />
+                  </div>
+                  <div className='grow'>
+                    <div className='mb-1 flex h-6 items-center'>
+                      <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.proxyPassword')}</span>
+                    </div>
+                    <Input
+                      type='password'
+                      value={proxyPassword}
+                      onChange={e => setProxyPassword(e.target.value)}
+                      placeholder={t('tools.mcp.modal.proxyPasswordPlaceholder')}
+                   />
+                 </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className='flex flex-row-reverse pt-5'>
           <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
