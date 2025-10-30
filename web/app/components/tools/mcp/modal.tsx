@@ -159,7 +159,7 @@ const MCPModal = ({
       return
     }
     //If password is still the masked value, don't send it (keep existing)
-    const maksedPwd = (data as any)?.masked_proxy_password || ''
+    const maskedPwd = (data as any)?.masked_proxy_password || ''
     //If proxyHost is empty, treat as clear request and send empty object
     const proxyPayload = proxyHost.trim() ? {
       host: proxyHost.trim() || undefined,
