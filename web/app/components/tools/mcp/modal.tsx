@@ -31,7 +31,7 @@ export type DuplicateAppModalProps = {
     timeout: number
     sse_read_timeout: number
     headers?: Record<string, string>
-    proxy?: { host?: string; username?: string; password?: string}
+    proxy?: { host?: string; username?: string; password?: string }
   }) => void
   onHide: () => void
 }
@@ -84,6 +84,7 @@ const MCPModal = ({
   // Update states when data changes (for edit mode)
   React.useEffect(() => {
     if (data) {
+      console.log(MCP_PROVIDER_PROXY_ENABLED)
       setUrl(data.server_url || '')
       setName(data.name || '')
       setServerIdentifier(data.server_identifier || '')
