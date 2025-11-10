@@ -353,7 +353,6 @@ class BuiltinToolManageService:
                 encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
                     tenant_id, provider, provider.provider, provider_controller
                 )
-                encrypter = encrypters[credential_type]
                 decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
