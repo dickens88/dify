@@ -61,6 +61,16 @@ const translation = {
     selectAll: 'Izberi vse',
     deSelectAll: 'Odberi vse',
     config: 'Konfiguracija',
+    no: 'Ne',
+    confirmAction: 'Prosimo, potrdite svoje dejanje.',
+    deleteConfirmTitle: 'Izbrisati?',
+    yes: 'Da',
+    noSearchResults: 'Ni bilo najdenih {{content}}',
+    resetKeywords: 'Ponastavi ključne besede',
+    selectCount: '{{count}} Izbrano',
+    searchCount: 'Najdi {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Zdaj',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -69,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'Vnesite prosim',
     select: 'Izberite prosim',
+    search: 'Išči...',
   },
   voice: {
     language: {
@@ -161,7 +172,6 @@ const translation = {
     workspace: 'Delovni prostor',
     createWorkspace: 'Ustvari delovni prostor',
     helpCenter: 'Pomoč',
-    communityFeedback: 'Povratne informacije',
     roadmap: 'Načrt razvoja',
     community: 'Skupnost',
     about: 'O nas',
@@ -169,6 +179,8 @@ const translation = {
     support: 'Podpora',
     github: 'GitHub',
     compliance: 'Skladnost',
+    contactUs: 'Kontaktirajte nas',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -787,6 +799,7 @@ const translation = {
     uploadFromComputer: 'Lokalno nalaganje',
     uploadFromComputerLimit: 'Nalaganje {{type}} ne sme presegati {{size}}',
     uploadFromComputerReadError: 'Branje datoteke ni uspelo, poskusite znova.',
+    fileExtensionBlocked: 'Ta vrsta datoteke je zaradi varnostnih razlogov blokirana',
   },
   tag: {
     addTag: 'Dodajanje oznak',
@@ -843,6 +856,13 @@ const translation = {
   },
   label: {
     optional: '(neobvezno)',
+  },
+  noData: 'Ni podatkov',
+  dynamicSelect: {
+    error: 'Nalaganje možnosti ni uspelo',
+    noData: 'Ni na voljo nobenih možnosti',
+    loading: 'Nalaganje možnosti...',
+    selected: '{{count}} izbrano',
   },
 }
 

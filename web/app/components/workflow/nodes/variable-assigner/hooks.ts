@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
 import {
-  useNodes,
   useStoreApi,
 } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+
 import { uniqBy } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useIsChatMode,
   useNodeDataUpdate,
