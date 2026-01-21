@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 
+from opentelemetry.trace import SpanKind
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.aliyun_trace.data_exporter.traceclient import (
@@ -151,6 +152,7 @@ class AliyunDataTrace(BaseTraceInstance):
             ),
             status=status,
             links=trace_metadata.links,
+            span_kind=SpanKind.SERVER,
         )
         self.trace_client.add_span(message_span)
 
@@ -296,7 +298,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 node_span = self.build_workflow_task_span(trace_info, node_execution, trace_metadata)
             return node_span
         except Exception as e:
-            logger.debug("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
+            logger.warning("Error occurred in build_workflow_node_span: %s", e, exc_info=True)
             return None
 
     def build_workflow_task_span(
@@ -456,6 +458,7 @@ class AliyunDataTrace(BaseTraceInstance):
                 ),
                 status=status,
                 links=trace_metadata.links,
+                span_kind=SpanKind.SERVER,
             )
             self.trace_client.add_span(message_span)
 
@@ -475,6 +478,7 @@ class AliyunDataTrace(BaseTraceInstance):
             ),
             status=status,
             links=trace_metadata.links,
+            span_kind=SpanKind.SERVER if message_span_id is None else SpanKind.INTERNAL,
         )
         self.trace_client.add_span(workflow_span)
 
