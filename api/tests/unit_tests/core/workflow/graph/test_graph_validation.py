@@ -3,28 +3,32 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
-from core.workflow.graph import Graph
-from core.workflow.graph.validation import GraphValidationError
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.base.node import Node
-from core.workflow.system_variable import SystemVariable
-from models.enums import UserFrom
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, NodeExecutionType, NodeType
+from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
+from graphon.nodes.base.node import Node
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
-class _TestNode(Node):
-    node_type = NodeType.ANSWER
+class _TestNodeData(BaseNodeData):
+    type: NodeType | None = None
+    execution_type: NodeExecutionType | str | None = None
+
+
+class _TestNode(Node[_TestNodeData]):
+    node_type = BuiltinNodeTypes.ANSWER
     execution_type = NodeExecutionType.EXECUTABLE
 
     @classmethod
     def version(cls) -> str:
-        return "test"
+        return "1"
 
     def __init__(
         self,
@@ -40,50 +44,27 @@ class _TestNode(Node):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        data = config.get("data", {})
-        if isinstance(data, Mapping):
-            execution_type = data.get("execution_type")
-            if isinstance(execution_type, str):
-                self.execution_type = NodeExecutionType(execution_type)
-        self._base_node_data = BaseNodeData(title=str(data.get("title", self.id)))
-        self.data: dict[str, object] = {}
 
-    def init_node_data(self, data: Mapping[str, object]) -> None:
-        title = str(data.get("title", self.id))
-        desc = data.get("description")
-        error_strategy_value = data.get("error_strategy")
-        error_strategy: ErrorStrategy | None = None
-        if isinstance(error_strategy_value, ErrorStrategy):
-            error_strategy = error_strategy_value
-        elif isinstance(error_strategy_value, str):
-            error_strategy = ErrorStrategy(error_strategy_value)
-        self._base_node_data = BaseNodeData(
-            title=title,
-            desc=str(desc) if desc is not None else None,
-            error_strategy=error_strategy,
-        )
-        self.data = dict(data)
+        node_type_value = self.data.get("type")
+        if isinstance(node_type_value, str):
+            self.node_type = node_type_value
 
     def _run(self):
         raise NotImplementedError
 
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._base_node_data.error_strategy
+    def post_init(self) -> None:
+        super().post_init()
+        self._maybe_override_execution_type()
+        self.data = dict(self.node_data.model_dump())
 
-    def _get_retry_config(self) -> RetryConfig:
-        return self._base_node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._base_node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._base_node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._base_node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._base_node_data
+    def _maybe_override_execution_type(self) -> None:
+        execution_type_value = self.node_data.execution_type
+        if execution_type_value is None:
+            return
+        if isinstance(execution_type_value, NodeExecutionType):
+            self.execution_type = execution_type_value
+        else:
+            self.execution_type = NodeExecutionType(execution_type_value)
 
 
 @dataclass(slots=True)
@@ -99,24 +80,23 @@ class _SimpleNodeFactory:
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )
-        node.init_node_data(node_config.get("data", {}))
         return node
 
 
 @pytest.fixture
 def graph_init_dependencies() -> tuple[_SimpleNodeFactory, dict[str, object]]:
     graph_config: dict[str, object] = {"edges": [], "nodes": []}
-    init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
+    init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
         user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.SERVICE_API,
+        user_from="account",
+        invoke_from="service-api",
         call_depth=0,
     )
-    variable_pool = VariablePool(system_variables=SystemVariable(user_id="user", files=[]), user_inputs={})
+    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user", files=[]), user_inputs={})
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     factory = _SimpleNodeFactory(graph_init_params=init_params, graph_runtime_state=runtime_state)
     return factory, graph_config
@@ -127,14 +107,17 @@ def test_graph_initialization_runs_default_validators(
 ):
     node_factory, graph_config = graph_init_dependencies
     graph_config["nodes"] = [
-        {"id": "start", "data": {"type": NodeType.START, "title": "Start", "execution_type": NodeExecutionType.ROOT}},
-        {"id": "answer", "data": {"type": NodeType.ANSWER, "title": "Answer"}},
+        {
+            "id": "start",
+            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
+        {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "Answer"}},
     ]
     graph_config["edges"] = [
         {"source": "start", "target": "answer", "sourceHandle": "success"},
     ]
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     assert graph.root_node.id == "start"
     assert "answer" in graph.nodes
@@ -145,14 +128,17 @@ def test_graph_validation_fails_for_unknown_edge_targets(
 ) -> None:
     node_factory, graph_config = graph_init_dependencies
     graph_config["nodes"] = [
-        {"id": "start", "data": {"type": NodeType.START, "title": "Start", "execution_type": NodeExecutionType.ROOT}},
+        {
+            "id": "start",
+            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
     ]
     graph_config["edges"] = [
         {"source": "start", "target": "missing", "sourceHandle": "success"},
     ]
 
     with pytest.raises(GraphValidationError) as exc:
-        Graph.init(graph_config=graph_config, node_factory=node_factory)
+        Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     assert any(issue.code == "MISSING_NODE" for issue in exc.value.issues)
 
@@ -162,11 +148,14 @@ def test_graph_promotes_fail_branch_nodes_to_branch_execution_type(
 ) -> None:
     node_factory, graph_config = graph_init_dependencies
     graph_config["nodes"] = [
-        {"id": "start", "data": {"type": NodeType.START, "title": "Start", "execution_type": NodeExecutionType.ROOT}},
+        {
+            "id": "start",
+            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
         {
             "id": "branch",
             "data": {
-                "type": NodeType.IF_ELSE,
+                "type": BuiltinNodeTypes.IF_ELSE,
                 "title": "Branch",
                 "error_strategy": ErrorStrategy.FAIL_BRANCH,
             },
@@ -176,6 +165,55 @@ def test_graph_promotes_fail_branch_nodes_to_branch_execution_type(
         {"source": "start", "target": "branch", "sourceHandle": "success"},
     ]
 
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     assert graph.nodes["branch"].execution_type == NodeExecutionType.BRANCH
+
+
+def test_graph_init_ignores_custom_note_nodes_before_node_data_validation(
+    graph_init_dependencies: tuple[_SimpleNodeFactory, dict[str, object]],
+) -> None:
+    node_factory, graph_config = graph_init_dependencies
+    graph_config["nodes"] = [
+        {
+            "id": "start",
+            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
+        {"id": "answer", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "Answer"}},
+        {
+            "id": "note",
+            "type": "custom-note",
+            "data": {
+                "type": "",
+                "title": "",
+                "desc": "",
+                "text": "{}",
+                "theme": "blue",
+            },
+        },
+    ]
+    graph_config["edges"] = [
+        {"source": "start", "target": "answer", "sourceHandle": "success"},
+    ]
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+
+    assert graph.root_node.id == "start"
+    assert "answer" in graph.nodes
+    assert "note" not in graph.nodes
+
+
+def test_graph_init_fails_for_unknown_root_node_id(
+    graph_init_dependencies: tuple[_SimpleNodeFactory, dict[str, object]],
+) -> None:
+    node_factory, graph_config = graph_init_dependencies
+    graph_config["nodes"] = [
+        {
+            "id": "start",
+            "data": {"type": BuiltinNodeTypes.START, "title": "Start", "execution_type": NodeExecutionType.ROOT},
+        },
+    ]
+    graph_config["edges"] = []
+
+    with pytest.raises(ValueError, match="Root node id missing not found in the graph"):
+        Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="missing")

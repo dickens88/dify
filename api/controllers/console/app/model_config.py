@@ -3,11 +3,10 @@ from typing import cast
 
 from flask import request
 from flask_restx import Resource, fields
-from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -21,11 +20,11 @@ from services.app_model_config_service import AppModelConfigService
 
 @console_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
-    @api.doc("update_app_model_config")
-    @api.doc(description="Update application model configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_app_model_config")
+    @console_ns.doc(description="Update application model configuration")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "ModelConfigRequest",
             {
                 "provider": fields.String(description="Model provider"),
@@ -43,20 +42,17 @@ class ModelConfigResource(Resource):
             },
         )
     )
-    @api.response(200, "Model configuration updated successfully")
-    @api.response(400, "Invalid configuration")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "Model configuration updated successfully")
+    @console_ns.response(400, "Invalid configuration")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
         current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_tenant_id,
@@ -73,9 +69,7 @@ class ModelConfigResource(Resource):
 
         if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
             # get original app model config
-            original_app_model_config = (
-                db.session.query(AppModelConfig).where(AppModelConfig.id == app_model.app_model_config_id).first()
-            )
+            original_app_model_config = db.session.get(AppModelConfig, app_model.app_model_config_id)
             if original_app_model_config is None:
                 raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
@@ -94,6 +88,7 @@ class ModelConfigResource(Resource):
                         tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
+                        user_id=current_user.id,
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_tenant_id,
@@ -133,6 +128,7 @@ class ModelConfigResource(Resource):
                             tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
+                            user_id=current_user.id,
                         )
                     except Exception:
                         continue

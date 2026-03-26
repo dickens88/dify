@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import BlockInput from '.'
 
 const meta = {
-  title: 'Base/BlockInput',
+  title: 'Base/Data Entry/BlockInput',
   component: BlockInput,
   parameters: {
     layout: 'centered',

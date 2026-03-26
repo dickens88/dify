@@ -5,9 +5,11 @@ This module provides integration with Weaviate vector database for storing and r
 document embeddings used in retrieval-augmented generation workflows.
 """
 
+import atexit
 import datetime
 import json
 import logging
+import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -32,6 +34,35 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
+_weaviate_client: weaviate.WeaviateClient | None = None
+_weaviate_client_lock = threading.Lock()
+
+
+def _shutdown_weaviate_client() -> None:
+    """
+    Best-effort shutdown hook to close the module-level Weaviate client.
+
+    This is registered with atexit so that HTTP/gRPC resources are released
+    when the Python interpreter exits.
+    """
+    global _weaviate_client
+
+    # Ensure thread-safety when accessing the shared client instance
+    with _weaviate_client_lock:
+        client = _weaviate_client
+        _weaviate_client = None
+
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            # Best-effort cleanup; log at debug level and ignore errors.
+            logger.debug("Failed to close Weaviate client during shutdown", exc_info=True)
+
+
+# Register the shutdown hook once per process.
+atexit.register(_shutdown_weaviate_client)
+
 
 class WeaviateConfig(BaseModel):
     """
@@ -39,11 +70,13 @@ class WeaviateConfig(BaseModel):
 
     Attributes:
         endpoint: Weaviate server endpoint URL
+        grpc_endpoint: Optional Weaviate gRPC server endpoint URL
         api_key: Optional API key for authentication
         batch_size: Number of objects to batch per insert operation
     """
 
     endpoint: str
+    grpc_endpoint: str | None = None
     api_key: str | None = None
     batch_size: int = 100
 
@@ -64,6 +97,8 @@ class WeaviateVector(BaseVector):
     in a Weaviate collection.
     """
 
+    _DOCUMENT_ID_PROPERTY = "document_id"
+
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
         """
         Initializes the Weaviate vector store.
@@ -83,29 +118,52 @@ class WeaviateVector(BaseVector):
 
         Configures both HTTP and gRPC connections with proper authentication.
         """
-        p = urlparse(config.endpoint)
-        host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
-        http_secure = p.scheme == "https"
-        http_port = p.port or (443 if http_secure else 80)
+        global _weaviate_client
+        if _weaviate_client and _weaviate_client.is_ready():
+            return _weaviate_client
 
-        grpc_host = host
-        grpc_secure = http_secure
-        grpc_port = 443 if grpc_secure else 50051
+        with _weaviate_client_lock:
+            if _weaviate_client and _weaviate_client.is_ready():
+                return _weaviate_client
 
-        client = weaviate.connect_to_custom(
-            http_host=host,
-            http_port=http_port,
-            http_secure=http_secure,
-            grpc_host=grpc_host,
-            grpc_port=grpc_port,
-            grpc_secure=grpc_secure,
-            auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
-        )
+            p = urlparse(config.endpoint)
+            host = p.hostname or config.endpoint.replace("https://", "").replace("http://", "")
+            http_secure = p.scheme == "https"
+            http_port = p.port or (443 if http_secure else 80)
 
-        if not client.is_ready():
-            raise ConnectionError("Vector database is not ready")
+            # Parse gRPC configuration
+            if config.grpc_endpoint:
+                # Urls without scheme won't be parsed correctly in some python versions,
+                # see https://bugs.python.org/issue27657
+                grpc_endpoint_with_scheme = (
+                    config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+                )
+                grpc_p = urlparse(grpc_endpoint_with_scheme)
+                grpc_host = grpc_p.hostname or "localhost"
+                grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
+                grpc_secure = grpc_p.scheme == "grpcs"
+            else:
+                # Infer from HTTP endpoint as fallback
+                grpc_host = host
+                grpc_secure = http_secure
+                grpc_port = 443 if grpc_secure else 50051
 
-        return client
+            client = weaviate.connect_to_custom(
+                http_host=host,
+                http_port=http_port,
+                http_secure=http_secure,
+                grpc_host=grpc_host,
+                grpc_port=grpc_port,
+                grpc_secure=grpc_secure,
+                auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
+                skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
+            )
+
+            if not client.is_ready():
+                raise ConnectionError("Vector database is not ready")
+
+            _weaviate_client = client
+            return client
 
     def get_type(self) -> str:
         """Returns the vector database type identifier."""
@@ -151,16 +209,22 @@ class WeaviateVector(BaseVector):
 
             try:
                 if not self._client.collections.exists(self._collection_name):
+                    tokenization = (
+                        wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
+                        if dify_config.WEAVIATE_TOKENIZATION
+                        else wc.Tokenization.WORD
+                    )
                     self._client.collections.create(
                         name=self._collection_name,
                         properties=[
                             wc.Property(
                                 name=Field.TEXT_KEY.value,
                                 data_type=wc.DataType.TEXT,
-                                tokenization=wc.Tokenization.WORD,
+                                tokenization=tokenization,
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),
+                            wc.Property(name="doc_type", data_type=wc.DataType.TEXT),
                             wc.Property(name="chunk_index", data_type=wc.DataType.INT),
                         ],
                         vector_config=wc.Configure.Vectors.self_provided(),
@@ -190,6 +254,8 @@ class WeaviateVector(BaseVector):
             to_add.append(wc.Property(name="document_id", data_type=wc.DataType.TEXT))
         if "doc_id" not in existing:
             to_add.append(wc.Property(name="doc_id", data_type=wc.DataType.TEXT))
+        if "doc_type" not in existing:
+            to_add.append(wc.Property(name="doc_type", data_type=wc.DataType.TEXT))
         if "chunk_index" not in existing:
             to_add.append(wc.Property(name="chunk_index", data_type=wc.DataType.INT))
 
@@ -320,15 +386,12 @@ class WeaviateVector(BaseVector):
             return []
 
         col = self._client.collections.use(self._collection_name)
-        props = list({*self._attributes, "document_id", Field.TEXT_KEY.value})
+        props = list({*self._attributes, self._DOCUMENT_ID_PROPERTY, Field.TEXT_KEY.value})
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -375,10 +438,7 @@ class WeaviateVector(BaseVector):
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
         if doc_ids:
-            ors = [Filter.by_property("document_id").equal(x) for x in doc_ids]
-            where = ors[0]
-            for f in ors[1:]:
-                where = where | f
+            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
 
         top_k = int(kwargs.get("top_k", 4))
 
@@ -431,6 +491,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             config=WeaviateConfig(
                 endpoint=dify_config.WEAVIATE_ENDPOINT or "",
+                grpc_endpoint=dify_config.WEAVIATE_GRPC_ENDPOINT or "",
                 api_key=dify_config.WEAVIATE_API_KEY,
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
             ),

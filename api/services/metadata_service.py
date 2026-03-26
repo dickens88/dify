@@ -7,6 +7,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.enums import DatasetMetadataType
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -130,11 +131,11 @@ class MetadataService:
     @staticmethod
     def get_built_in_fields():
         return [
-            {"name": BuiltInField.document_name, "type": "string"},
-            {"name": BuiltInField.uploader, "type": "string"},
-            {"name": BuiltInField.upload_date, "type": "time"},
-            {"name": BuiltInField.last_update_date, "type": "time"},
-            {"name": BuiltInField.source, "type": "string"},
+            {"name": BuiltInField.document_name, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.uploader, "type": DatasetMetadataType.STRING},
+            {"name": BuiltInField.upload_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.last_update_date, "type": DatasetMetadataType.TIME},
+            {"name": BuiltInField.source, "type": DatasetMetadataType.STRING},
         ]
 
     @staticmethod
@@ -206,7 +207,10 @@ class MetadataService:
                 document = DocumentService.get_document(dataset.id, operation.document_id)
                 if document is None:
                     raise ValueError("Document not found.")
-                doc_metadata = {}
+                if operation.partial_update:
+                    doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
+                else:
+                    doc_metadata = {}
                 for metadata_value in operation.metadata_list:
                     doc_metadata[metadata_value.name] = metadata_value.value
                 if dataset.built_in_field_enabled:
@@ -217,11 +221,23 @@ class MetadataService:
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
-                db.session.commit()
-                # deal metadata binding
-                db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+
+                # deal metadata binding (in the same transaction as the doc_metadata update)
+                if not operation.partial_update:
+                    db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+
                 current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
+                    # check if binding already exists
+                    if operation.partial_update:
+                        existing_binding = (
+                            db.session.query(DatasetMetadataBinding)
+                            .filter_by(document_id=operation.document_id, metadata_id=metadata_value.id)
+                            .first()
+                        )
+                        if existing_binding:
+                            continue
+
                     dataset_metadata_binding = DatasetMetadataBinding(
                         tenant_id=current_tenant_id,
                         dataset_id=dataset.id,
@@ -232,7 +248,9 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
+                db.session.rollback()
                 logger.exception("Update documents metadata failed")
+                raise
             finally:
                 redis_client.delete(lock_key)
 

@@ -1,11 +1,18 @@
 [importlinter]
 root_packages =
     core
+    constants
+    context
+    graphon
     configs
     controllers
+    extensions
+    factories
+    libs
     models
     tasks
     services
+include_external_packages = True
 
 [importlinter:contract:workflow]
 name = Workflow
@@ -16,21 +23,73 @@ layers =
     graph
     nodes
     node_events
+    runtime
     entities
 containers =
-    core.workflow
+    graphon
 ignore_imports =
-    core.workflow.nodes.base.node -> core.workflow.graph_events
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_events
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_events
+    graphon.nodes.base.node -> graphon.graph_events
+    graphon.nodes.iteration.iteration_node -> graphon.graph_events
+    graphon.nodes.loop.loop_node -> graphon.graph_events
 
-    core.workflow.nodes.node_factory -> core.workflow.graph
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph
-    core.workflow.nodes.iteration.iteration_node -> core.workflow.graph_engine.command_channels
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph
-    core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+    graphon.nodes.iteration.iteration_node -> graphon.graph_engine
+    graphon.nodes.loop.loop_node -> graphon.graph_engine
+    # TODO(QuantumGhost): fix the import violation later
+    graphon.entities.pause_reason -> graphon.nodes.human_input.entities
+
+[importlinter:contract:workflow-external-imports]
+name = Workflow External Imports
+type = forbidden
+source_modules =
+    graphon
+forbidden_modules =
+    constants
+    configs
+    context
+    controllers
+    extensions
+    factories
+    libs
+    models
+    services
+    tasks
+    core.agent
+    core.app
+    core.base
+    core.callback_handler
+    core.datasource
+    core.db
+    core.entities
+    core.errors
+    core.extension
+    core.external_data_tool
+    core.file
+    core.helper
+    core.hosting_configuration
+    core.indexing_runner
+    core.llm_generator
+    core.logging
+    core.mcp
+    core.memory
+    core.moderation
+    core.ops
+    core.plugin
+    core.prompt
+    core.provider_manager
+    core.rag
+    core.repositories
+    core.schemas
+    core.tools
+    core.trigger
+    core.variables
+
+[importlinter:contract:workflow-third-party-imports]
+name = Workflow Third-Party Imports
+type = forbidden
+source_modules =
+    graphon
+forbidden_modules =
+    sqlalchemy
 
 [importlinter:contract:rsc]
 name = RSC
@@ -39,7 +98,7 @@ layers =
     graph_engine
     response_coordinator
 containers =
-    core.workflow.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:worker]
 name = Worker
@@ -48,7 +107,7 @@ layers =
     graph_engine
     worker
 containers =
-    core.workflow.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:graph-engine-architecture]
 name = Graph Engine Architecture
@@ -64,28 +123,28 @@ layers =
     worker_management
     domain
 containers =
-    core.workflow.graph_engine
+    graphon.graph_engine
 
 [importlinter:contract:domain-isolation]
 name = Domain Model Isolation
 type = forbidden
 source_modules =
-    core.workflow.graph_engine.domain
+    graphon.graph_engine.domain
 forbidden_modules =
-    core.workflow.graph_engine.worker_management
-    core.workflow.graph_engine.command_channels
-    core.workflow.graph_engine.layers
-    core.workflow.graph_engine.protocols
+    graphon.graph_engine.worker_management
+    graphon.graph_engine.command_channels
+    graphon.graph_engine.layers
+    graphon.graph_engine.protocols
 
 [importlinter:contract:worker-management]
 name = Worker Management
 type = forbidden
 source_modules =
-    core.workflow.graph_engine.worker_management
+    graphon.graph_engine.worker_management
 forbidden_modules =
-    core.workflow.graph_engine.orchestration
-    core.workflow.graph_engine.command_processing
-    core.workflow.graph_engine.event_management
+    graphon.graph_engine.orchestration
+    graphon.graph_engine.command_processing
+    graphon.graph_engine.event_management
 
 
 [importlinter:contract:graph-traversal-components]
@@ -95,11 +154,11 @@ layers =
     edge_processor
     skip_propagator
 containers =
-    core.workflow.graph_engine.graph_traversal
+    graphon.graph_engine.graph_traversal
 
 [importlinter:contract:command-channels]
 name = Command Channels Independence
 type = independence
 modules =
-    core.workflow.graph_engine.command_channels.in_memory_channel
-    core.workflow.graph_engine.command_channels.redis_channel
+    graphon.graph_engine.command_channels.in_memory_channel
+    graphon.graph_engine.command_channels.redis_channel

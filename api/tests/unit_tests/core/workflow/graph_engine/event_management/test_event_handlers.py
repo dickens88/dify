@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph import Graph
-from core.workflow.graph_engine.domain.graph_execution import GraphExecution
-from core.workflow.graph_engine.event_management.event_handlers import EventHandler
-from core.workflow.graph_engine.event_management.event_manager import EventManager
-from core.workflow.graph_engine.graph_state_manager import GraphStateManager
-from core.workflow.graph_engine.ready_queue.in_memory import InMemoryReadyQueue
-from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
-from core.workflow.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
-from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import RetryConfig
-from core.workflow.runtime import GraphRuntimeState, VariablePool
+from graphon.entities.base_node_data import RetryConfig
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeState, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.graph_engine.domain.graph_execution import GraphExecution
+from graphon.graph_engine.event_management.event_handlers import EventHandler
+from graphon.graph_engine.event_management.event_manager import EventManager
+from graphon.graph_engine.graph_state_manager import GraphStateManager
+from graphon.graph_engine.ready_queue.in_memory import InMemoryReadyQueue
+from graphon.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
+from graphon.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
+from graphon.node_events import NodeRunResult
+from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 
 
 class _StubEdgeProcessor:
@@ -74,8 +73,8 @@ def test_retry_does_not_emit_additional_start_event() -> None:
     handler, event_manager, graph_execution = _build_event_handler(node_id)
 
     execution_id = "exec-1"
-    node_type = NodeType.CODE
-    start_time = datetime.utcnow()
+    node_type = BuiltinNodeTypes.CODE
+    start_time = naive_utc_now()
 
     start_event = NodeRunStartedEvent(
         id=execution_id,

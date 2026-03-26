@@ -1,33 +1,34 @@
 import time
+from unittest import mock
 
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.message_entities import PromptMessageRole
-from core.workflow.entities import GraphInitParams
-from core.workflow.graph import Graph
-from core.workflow.graph_events import (
+from core.workflow.system_variables import build_system_variables
+from graphon.graph import Graph
+from graphon.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import VariableSelector
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.if_else.entities import IfElseNodeData
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.nodes.llm.entities import (
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.nodes.base.entities import OutputVariableEntity, OutputVariableType
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.if_else.entities import IfElseNodeData
+from graphon.nodes.if_else.if_else_node import IfElseNode
+from graphon.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,
     LLMNodeData,
     ModelConfig,
     VisionConfig,
 )
-from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.runtime import GraphRuntimeState, VariablePool
-from core.workflow.system_variable import SystemVariable
-from core.workflow.utils.condition.entities import Condition
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.utils.condition.entities import Condition
+from tests.workflow_test_utils import build_test_graph_init_params
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -36,19 +37,14 @@ from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Graph, GraphRuntimeState]:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
-    graph_init_params = GraphInitParams(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
+    graph_init_params = build_test_graph_init_params(
         graph_config=graph_config,
-        user_id="user",
         user_from="account",
         invoke_from="debugger",
-        call_depth=0,
     )
 
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
+        system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],
     )
@@ -62,7 +58,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    start_node.init_node_data(start_config["data"])
 
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
@@ -86,8 +81,9 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
+            credentials_provider=mock.Mock(),
+            model_factory=mock.Mock(),
         )
-        llm_node.init_node_data(llm_config["data"])
         return llm_node
 
     llm_initial = _create_llm_node("llm_initial", "Initial LLM", "Initial stream")
@@ -118,7 +114,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    if_else_node.init_node_data(if_else_config["data"])
 
     llm_primary = _create_llm_node("llm_primary", "Primary LLM", "Primary stream output")
     llm_secondary = _create_llm_node("llm_secondary", "Secondary LLM", "Secondary")
@@ -126,8 +121,12 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     end_primary_data = EndNodeData(
         title="End Primary",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="primary_text", value_selector=["llm_primary", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="primary_text", value_type=OutputVariableType.STRING, value_selector=["llm_primary", "text"]
+            ),
         ],
         desc=None,
     )
@@ -138,13 +137,18 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    end_primary.init_node_data(end_primary_config["data"])
 
     end_secondary_data = EndNodeData(
         title="End Secondary",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="secondary_text", value_selector=["llm_secondary", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="secondary_text",
+                value_type=OutputVariableType.STRING,
+                value_selector=["llm_secondary", "text"],
+            ),
         ],
         desc=None,
     )
@@ -155,7 +159,6 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    end_secondary.init_node_data(end_secondary_config["data"])
 
     graph = (
         Graph.new()
