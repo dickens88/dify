@@ -177,6 +177,55 @@ export default function AppSelector() {
           <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
           {!systemFeatures.branding.enabled && (
             <>
+              <AccountMenuSection>
+                <AccountMenuExternalItem
+                  href={docLink('/use-dify/getting-started/introduction')}
+                  iconClassName="i-ri-book-open-line"
+                  label={t('userProfile.helpCenter', { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+                <Support closeAccountDropdown={() => setIsAccountMenuOpen(false)} />
+                {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+              </AccountMenuSection>
+              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
+              <AccountMenuSection>
+                <AccountMenuExternalItem
+                  href="https://roadmap.dify.ai"
+                  iconClassName="i-ri-map-2-line"
+                  label={t('userProfile.roadmap', { ns: 'common' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+                <AccountMenuExternalItem
+                  href="https://github.com/langgenius/dify"
+                  iconClassName="i-ri-github-line"
+                  label={t('userProfile.github', { ns: 'common' })}
+                  trailing={(
+                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                      <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
+                      <GithubStar className="text-text-tertiary system-2xs-medium-uppercase" />
+                    </div>
+                  )}
+                />
+                {
+                  env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
+                    <AccountMenuActionItem
+                      iconClassName="i-ri-information-2-line"
+                      label={t('userProfile.about', { ns: 'common' })}
+                      onClick={() => {
+                        setAboutVisible(true)
+                        setIsAccountMenuOpen(false)
+                      }}
+                      trailing={(
+                        <div className="flex shrink-0 items-center">
+                          <div className="mr-2 text-text-tertiary system-xs-regular">{langGeniusVersionInfo.current_version}</div>
+                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                        </div>
+                      )}
+                    />
+                  )
+                }
+              </AccountMenuSection>
+              <DropdownMenuSeparator className="!my-0 bg-divider-subtle" />
             </>
           )}
           <AccountMenuSection>
