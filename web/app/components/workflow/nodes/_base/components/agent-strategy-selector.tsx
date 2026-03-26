@@ -4,7 +4,6 @@ import type { Strategy } from './agent-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
-import Link from 'next/link'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -17,6 +16,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import Link from '@/next/link'
 import { useStrategyProviders } from '@/service/use-strategy'
 import { cn } from '@/utils/classnames'
 import Tools from '../../../block-selector/tools'
@@ -92,13 +92,12 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy
   onChange: (value?: Strategy) => void
-  canChooseMCPTool: boolean
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
-  const { value, onChange, canChooseMCPTool } = props
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -242,7 +241,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               indexBarClassName="top-0 xl:top-36"
               hasSearchText={false}
               canNotSelectMultiple
-              canChooseMCPTool={canChooseMCPTool}
               isAgent
             />
             {enable_marketplace && (

@@ -7,7 +7,6 @@ import {
 } from '@remixicon/react'
 import { flatten } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
@@ -15,6 +14,7 @@ import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
+import { useParams } from '@/next/navigation'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../nav'
@@ -33,6 +33,7 @@ const AppNav = () => {
     data: appsData,
     fetchNextPage,
     hasNextPage,
+    isFetchingNextPage,
     refetch,
   } = useInfiniteAppList({
     page: 1,
@@ -111,6 +112,7 @@ const AppNav = () => {
         createText={t('menus.newApp', { ns: 'common' })}
         onCreate={openModal}
         onLoadMore={handleLoadMore}
+        isLoadingMore={isFetchingNextPage}
       />
       <CreateAppModal
         show={showNewAppDialog}

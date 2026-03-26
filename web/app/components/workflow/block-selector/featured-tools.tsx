@@ -4,7 +4,6 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { RiMoreLine } from '@remixicon/react'
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
@@ -13,6 +12,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
+import Link from '@/next/link'
 import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -30,7 +30,6 @@ type FeaturedToolsProps = {
   providerMap: Map<string, ToolWithProvider>
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
   isLoading?: boolean
   onInstallSuccess?: () => void
 }
@@ -42,7 +41,6 @@ const FeaturedTools = ({
   providerMap,
   onSelect,
   selectedTools,
-  canChooseMCPTool,
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
@@ -166,7 +164,6 @@ const FeaturedTools = ({
                   viewType={ViewType.flat}
                   hasSearchText={false}
                   selectedTools={selectedTools}
-                  canChooseMCPTool={canChooseMCPTool}
                 />
               )}
 

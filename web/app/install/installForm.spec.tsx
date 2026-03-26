@@ -7,7 +7,7 @@ import InstallForm from './installForm'
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 
@@ -16,7 +16,6 @@ vi.mock('@/service/common', () => ({
   fetchInitValidateStatus: vi.fn(),
   setup: vi.fn(),
   login: vi.fn(),
-  getSystemFeatures: vi.fn(),
 }))
 
 vi.mock('@/context/global-public-context', async (importOriginal) => {

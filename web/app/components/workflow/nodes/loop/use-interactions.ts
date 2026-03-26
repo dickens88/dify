@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import {
+  LOOP_CHILDREN_Z_INDEX,
   LOOP_PADDING,
 } from '../../constants'
 import {
@@ -107,16 +108,15 @@ export const useNodeLoopInteractions = () => {
       handleNodeLoopRerender(parentId)
   }, [store, handleNodeLoopRerender])
 
-  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
+  const handleNodeLoopChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_LOOP_START_NODE)
+    const newIdMapping = { ...idMapping }
 
-    return childrenNodes.map((child, index) => {
+    const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
-      const {
-        defaultValue,
-      } = nodesMetaDataMap![childNodeType]
+      const { defaultValue } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
@@ -127,19 +127,27 @@ export const useNodeLoopInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
+          _dimmed: false,
           title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
+          isInLoop: true,
           loop_id: newNodeId,
-
+          type: childNodeType,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,
         parentId: newNodeId,
         extent: child.extent,
-        zIndex: child.zIndex,
+        zIndex: LOOP_CHILDREN_Z_INDEX,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
+      newIdMapping[child.id] = newNode.id
       return newNode
     })
+
+    return {
+      copyChildren,
+      newIdMapping,
+    }
   }, [store, nodesMetaDataMap])
 
   return {
